@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { SearchForm } from "@/components/SearchForm";
 import { ResultsList } from "@/components/ResultsList";
 import { LeadDetail } from "@/components/LeadDetail";
@@ -14,6 +14,11 @@ export default function Home() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    mainRef.current?.focus();
+  }, [step]);
 
   const handleSearch = async (params: SearchParams) => {
     setIsLoading(true);
@@ -32,6 +37,15 @@ export default function Home() {
 
       setResults(data || []);
       setStep("results");
+
+      // Persist leads in background (non-blocking)
+      if (data?.length > 0) {
+        fetch("/api/leads", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ leads: data, search_params: params }),
+        }).catch(() => {}); // Silent fail — persistence is optional
+      }
     } catch (err: any) {
       console.error("Search error:", err);
       setError(err.message || "Ocorreu um erro inesperado.");
@@ -58,18 +72,23 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:bg-blue-600 focus:text-white focus:px-4 focus:py-2 focus:rounded">
+        Pular para o conteúdo
+      </a>
+
       {/* Header */}
       <header className="bg-slate-900 text-white sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div
-            className="flex items-center gap-2 cursor-pointer"
+          <button
+            className="flex items-center gap-2 cursor-pointer bg-transparent border-none text-white"
             onClick={handleBackToSearch}
+            aria-label="Voltar ao início"
           >
             <div className="bg-blue-600 p-1.5 rounded-lg">
-              <Sparkles className="w-5 h-5 text-white" />
+              <Sparkles className="w-5 h-5 text-white" aria-hidden="true" />
             </div>
             <span className="font-bold text-xl tracking-tight">ProspectAI</span>
-          </div>
+          </button>
           <div className="text-sm text-slate-400 hidden sm:block">
             Prospecção Inteligente B2B
           </div>
@@ -77,12 +96,13 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main id="main-content" ref={mainRef} tabIndex={-1} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 outline-none">
         {error && (
-          <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg flex items-center justify-between">
+          <div role="alert" aria-live="assertive" className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-lg flex items-center justify-between">
             <span>{error}</span>
             <button
               onClick={() => setError(null)}
+              aria-label="Fechar mensagem de erro"
               className="text-rose-500 hover:text-rose-700 font-bold"
             >
               &times;

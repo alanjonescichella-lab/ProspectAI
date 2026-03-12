@@ -28,16 +28,21 @@ export function LeadDetail({ lead, searchParams, onBack }: LeadDetailProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchReport = async () => {
       try {
         setIsLoading(true);
+        setError(null);
 
         const res = await fetch("/api/report", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ lead, service: searchParams.service }),
+          signal: controller.signal,
         });
 
         const data = await res.json();
@@ -55,11 +60,19 @@ export function LeadDetail({ lead, searchParams, onBack }: LeadDetailProps) {
     };
 
     fetchReport();
-  }, [lead, searchParams]);
+
+    return () => controller.abort();
+  }, [lead, searchParams, retryKey]);
 
   const copyToClipboard = () => {
     if (report) {
-      navigator.clipboard.writeText(report);
+      // Strip markdown syntax for clean text
+      const cleanText = report
+        .replace(/#{1,6}\s/g, "")
+        .replace(/\*\*(.*?)\*\*/g, "$1")
+        .replace(/\*(.*?)\*/g, "$1")
+        .replace(/`(.*?)`/g, "$1");
+      navigator.clipboard.writeText(cleanText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -172,7 +185,7 @@ export function LeadDetail({ lead, searchParams, onBack }: LeadDetailProps) {
 
           <div className="bg-slate-900 rounded-xl border border-slate-800 p-6 text-white shadow-sm">
             <h3 className="text-sm font-medium text-slate-400 uppercase tracking-wider mb-4">
-              Digital Pain Score
+              Índice de Oportunidade Digital
             </h3>
             <div className="flex items-end gap-3 mb-2">
               <span className="text-5xl font-bold tracking-tighter">
@@ -207,7 +220,7 @@ export function LeadDetail({ lead, searchParams, onBack }: LeadDetailProps) {
                 <p className="font-medium">{error}</p>
                 <Button
                   variant="outline"
-                  onClick={() => window.location.reload()}
+                  onClick={() => setRetryKey(k => k + 1)}
                 >
                   Tentar Novamente
                 </Button>

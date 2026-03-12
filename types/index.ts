@@ -1,3 +1,23 @@
+export type Review = {
+  rating?: number;
+  text?: { text: string };
+};
+
+export type Photo = {
+  name?: string;
+  widthPx?: number;
+  heightPx?: number;
+};
+
+export type OpeningHours = {
+  openNow?: boolean;
+  periods?: Array<{
+    open: { day: number; hour: number; minute: number };
+    close?: { day: number; hour: number; minute: number };
+  }>;
+  weekdayDescriptions?: string[];
+};
+
 export type Lead = {
   id: string;
   name: string;
@@ -10,9 +30,9 @@ export type Lead = {
   primaryType: string;
   nationalPhoneNumber?: string;
   websiteUri?: string;
-  regularOpeningHours?: any;
-  photos?: any[];
-  reviews?: any[];
+  regularOpeningHours?: OpeningHours;
+  photos?: Photo[];
+  reviews?: Review[];
   businessStatus?: string;
   googleMapsUri?: string;
   digitalPainScore: number;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Lead } from "@/types";
 import { Button } from "./ui/button";
 import {
@@ -11,8 +11,13 @@ import {
   Building2,
   ExternalLink,
   Phone,
+  Download,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+const ITEMS_PER_PAGE = 12;
 
 interface ResultsListProps {
   results: Lead[];
@@ -34,6 +39,13 @@ export function ResultsList({
     }
     return "card";
   });
+  const [page, setPage] = useState(1);
+
+  const totalPages = Math.ceil(results.length / ITEMS_PER_PAGE);
+  const paginatedResults = results.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
 
   const toggleViewMode = (mode: "card" | "table") => {
     setViewMode(mode);
@@ -48,9 +60,55 @@ export function ResultsList({
   };
 
   const getScoreLabel = (score: number) => {
-    if (score <= 30) return "Baixa Oportunidade";
-    if (score <= 60) return "Média Oportunidade";
-    return "Alta Oportunidade";
+    if (score <= 30) return "Baixa";
+    if (score <= 60) return "Média";
+    return "Alta";
+  };
+
+  const exportCSV = () => {
+    const headers = [
+      "Nome",
+      "Endereço",
+      "Cidade",
+      "Estado",
+      "Avaliação",
+      "Nº Avaliações",
+      "Tipo",
+      "Telefone",
+      "Website",
+      "Google Maps",
+      "Score",
+      "Oportunidade",
+      "Resumo IA",
+    ];
+
+    const rows = results.map((lead) => [
+      lead.name,
+      lead.address,
+      lead.city,
+      lead.state,
+      lead.rating ?? "",
+      lead.userRatingCount ?? 0,
+      lead.primaryType?.replace(/_/g, " ") ?? "",
+      lead.nationalPhoneNumber ?? "",
+      lead.websiteUri ?? "",
+      lead.googleMapsUri ?? "",
+      lead.digitalPainScore,
+      getScoreLabel(lead.digitalPainScore),
+      `"${(lead.aiSummary || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent =
+      "\uFEFF" +
+      [headers.join(";"), ...rows.map((r) => r.join(";"))].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `prospect-ai-leads-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -69,37 +127,57 @@ export function ResultsList({
           </h2>
         </div>
 
-        <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
-          <button
-            onClick={() => toggleViewMode("card")}
-            className={cn(
-              "p-2 rounded-md transition-colors",
-              viewMode === "card"
-                ? "bg-slate-100 text-slate-900"
-                : "text-slate-500 hover:text-slate-900",
-            )}
-            title="Visualização em Cards"
-          >
-            <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => toggleViewMode("table")}
-            className={cn(
-              "p-2 rounded-md transition-colors",
-              viewMode === "table"
-                ? "bg-slate-100 text-slate-900"
-                : "text-slate-500 hover:text-slate-900",
-            )}
-            title="Visualização em Tabela"
-          >
-            <List className="w-4 h-4" />
-          </button>
+        <div className="flex items-center gap-2">
+          {results.length > 0 && (
+            <Button variant="outline" size="sm" onClick={exportCSV} className="bg-white">
+              <Download className="w-4 h-4 mr-2" aria-hidden="true" />
+              Exportar CSV
+            </Button>
+          )}
+
+          <div className="flex items-center bg-white border border-slate-200 rounded-lg p-1">
+            <button
+              onClick={() => toggleViewMode("card")}
+              aria-label="Visualização em Cards"
+              aria-pressed={viewMode === "card"}
+              className={cn(
+                "p-2 rounded-md transition-colors",
+                viewMode === "card"
+                  ? "bg-slate-100 text-slate-900"
+                  : "text-slate-500 hover:text-slate-900",
+              )}
+            >
+              <LayoutGrid className="w-4 h-4" aria-hidden="true" />
+            </button>
+            <button
+              onClick={() => toggleViewMode("table")}
+              aria-label="Visualização em Tabela"
+              aria-pressed={viewMode === "table"}
+              className={cn(
+                "p-2 rounded-md transition-colors",
+                viewMode === "table"
+                  ? "bg-slate-100 text-slate-900"
+                  : "text-slate-500 hover:text-slate-900",
+              )}
+            >
+              <List className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {viewMode === "card" ? (
+      {results.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <MapPin className="w-12 h-12 text-slate-300 mb-4" />
+          <h3 className="text-lg font-semibold text-slate-700 mb-2">Nenhum lead encontrado</h3>
+          <p className="text-slate-500 mb-6 max-w-md">
+            Não encontramos leads para esses critérios. Tente ampliar a localização ou ajustar o ICP.
+          </p>
+          <Button onClick={onBack}>Refinar Busca</Button>
+        </div>
+      ) : viewMode === "card" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {results.map((lead) => (
+          {paginatedResults.map((lead) => (
             <div
               key={lead.id}
               className="bg-white rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-shadow flex flex-col"
@@ -114,26 +192,27 @@ export function ResultsList({
                       "px-2.5 py-1 rounded-full text-xs font-bold border whitespace-nowrap ml-3",
                       getScoreColor(lead.digitalPainScore),
                     )}
+                    title={getScoreLabel(lead.digitalPainScore) + " Oportunidade"}
                   >
-                    {lead.digitalPainScore} / 100
+                    {lead.digitalPainScore} — {getScoreLabel(lead.digitalPainScore)}
                   </div>
                 </div>
 
                 <div className="space-y-2 mb-4 text-sm text-slate-600">
                   <div className="flex items-center gap-2">
-                    <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                    <Building2 className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
                     <span className="truncate">
                       {lead.primaryType?.replace(/_/g, " ") || "Negócio Local"}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                    <MapPin className="w-4 h-4 text-slate-400 shrink-0" aria-hidden="true" />
                     <span className="truncate">
                       {lead.city}, {lead.state}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Star className="w-4 h-4 text-amber-400 shrink-0 fill-amber-400" />
+                    <Star className="w-4 h-4 text-amber-400 shrink-0 fill-amber-400" aria-hidden="true" />
                     <span>
                       {lead.rating || "N/A"} ({lead.userRatingCount || 0}{" "}
                       avaliações)
@@ -164,13 +243,13 @@ export function ResultsList({
                 <th className="px-6 py-4 font-medium">Nome</th>
                 <th className="px-6 py-4 font-medium">Local</th>
                 <th className="px-6 py-4 font-medium">Avaliação</th>
-                <th className="px-6 py-4 font-medium">Pain Score</th>
+                <th className="px-6 py-4 font-medium">Score</th>
                 <th className="px-6 py-4 font-medium">Contato</th>
                 <th className="px-6 py-4 font-medium text-right">Ação</th>
               </tr>
             </thead>
             <tbody>
-              {results.map((lead) => (
+              {paginatedResults.map((lead) => (
                 <tr
                   key={lead.id}
                   className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
@@ -189,7 +268,7 @@ export function ResultsList({
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1">
-                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                      <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" aria-hidden="true" />
                       <span className="font-medium">{lead.rating || "-"}</span>
                       <span className="text-slate-400 text-xs">
                         ({lead.userRatingCount || 0})
@@ -203,7 +282,7 @@ export function ResultsList({
                         getScoreColor(lead.digitalPainScore),
                       )}
                     >
-                      {lead.digitalPainScore}
+                      {lead.digitalPainScore} — {getScoreLabel(lead.digitalPainScore)}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -213,11 +292,12 @@ export function ResultsList({
                           href={`tel:${lead.nationalPhoneNumber}`}
                           className="text-slate-400 hover:text-blue-600"
                           title={lead.nationalPhoneNumber}
+                          aria-label={`Ligar para ${lead.nationalPhoneNumber}`}
                         >
-                          <Phone className="w-4 h-4" />
+                          <Phone className="w-4 h-4" aria-hidden="true" />
                         </a>
                       ) : (
-                        <Phone className="w-4 h-4 text-slate-200" />
+                        <Phone className="w-4 h-4 text-slate-200" aria-hidden="true" />
                       )}
                       {lead.websiteUri ? (
                         <a
@@ -225,12 +305,12 @@ export function ResultsList({
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-slate-400 hover:text-blue-600"
-                          title="Website"
+                          aria-label={`Abrir website de ${lead.name}`}
                         >
-                          <ExternalLink className="w-4 h-4" />
+                          <ExternalLink className="w-4 h-4" aria-hidden="true" />
                         </a>
                       ) : (
-                        <ExternalLink className="w-4 h-4 text-slate-200" />
+                        <ExternalLink className="w-4 h-4 text-slate-200" aria-hidden="true" />
                       )}
                     </div>
                   </td>
@@ -247,6 +327,33 @@ export function ResultsList({
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            aria-label="Página anterior"
+          >
+            <ChevronLeft className="w-4 h-4" aria-hidden="true" />
+          </Button>
+          <span className="text-sm text-slate-600 px-3">
+            Página {page} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            aria-label="Próxima página"
+          >
+            <ChevronRight className="w-4 h-4" aria-hidden="true" />
+          </Button>
         </div>
       )}
     </div>

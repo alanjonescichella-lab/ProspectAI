@@ -37,12 +37,14 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-            <Target className="w-4 h-4 text-blue-500" />
+          <label htmlFor="icp-field" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <Target className="w-4 h-4 text-blue-500" aria-hidden="true" />
             Descreva seu ICP (Perfil de Cliente Ideal)
           </label>
           <Textarea
+            id="icp-field"
             required
+            maxLength={500}
             value={icp}
             onChange={(e) => setIcp(e.target.value)}
             placeholder="Ex: Clínicas odontológicas com 3+ anos, faturamento médio, presença digital fraca"
@@ -51,12 +53,14 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-blue-500" />
+          <label htmlFor="service-field" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-blue-500" aria-hidden="true" />
             Qual serviço você oferece?
           </label>
           <Textarea
+            id="service-field"
             required
+            maxLength={500}
             value={service}
             onChange={(e) => setService(e.target.value)}
             placeholder="Ex: Sistemas de IA para automação de atendimento e agendamento via WhatsApp"
@@ -66,11 +70,12 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-blue-500" />
+            <label htmlFor="state-field" className="text-sm font-medium text-slate-700 flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-blue-500" aria-hidden="true" />
               Estado
             </label>
             <select
+              id="state-field"
               value={state}
               onChange={(e) => setState(e.target.value)}
               className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2"
@@ -84,10 +89,11 @@ export function SearchForm({ onSearch, isLoading }: SearchFormProps) {
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
+            <label htmlFor="city-field" className="text-sm font-medium text-slate-700">
               Cidade (Opcional)
             </label>
             <Input
+              id="city-field"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="Ex: São Paulo"

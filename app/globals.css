@@ -1,3 +1,36 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+@theme {
+  --color-primary: #2563EB;
+  --color-primary-hover: #1D4ED8;
+  --color-danger: #F43F5E;
+  --color-success: #10B981;
+  --color-warning: #F59E0B;
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F8FAFC;
+  --color-border: #E2E8F0;
+  --color-text: #0F172A;
+  --color-text-muted: #64748B;
+  --color-header-bg: #0F172A;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface: #0F172A;
+    --color-surface-alt: #1E293B;
+    --color-border: #334155;
+    --color-text: #F1F5F9;
+    --color-text-muted: #94A3B8;
+    --color-header-bg: #020617;
+  }
+}
+
+.dark {
+  --color-surface: #0F172A;
+  --color-surface-alt: #1E293B;
+  --color-border: #334155;
+  --color-text: #F1F5F9;
+  --color-text-muted: #94A3B8;
+  --color-header-bg: #020617;
+}

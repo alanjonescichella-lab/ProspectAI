@@ -1,9 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { z } from "zod";
+
+const reportSchema = z.object({
+  lead: z.object({
+    name: z.string().min(1).max(200),
+    address: z.string().max(500).default("Não informado"),
+    rating: z.number().min(0).max(5).nullable().default(null),
+    userRatingCount: z.number().min(0).default(0),
+    websiteUri: z.string().max(500).nullable().default(null),
+    nationalPhoneNumber: z.string().max(30).nullable().default(null),
+    types: z.array(z.string().max(100)).default([]),
+    reviews: z.array(z.object({
+      rating: z.number().optional(),
+      text: z.object({ text: z.string().max(1000) }).optional(),
+    })).default([]),
+  }),
+  service: z.string().min(1).max(500),
+});
 
 export async function POST(req: NextRequest) {
   try {
-    const { lead, service } = await req.json();
+    const body = await req.json();
+    const parsed = reportSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados inválidos: " + parsed.error.issues.map(i => i.message).join(", ") },
+        { status: 400 }
+      );
+    }
+
+    const { lead, service } = parsed.data;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -22,16 +49,16 @@ export async function POST(req: NextRequest) {
       Aqui estão os dados do lead (empresa):
       Nome: ${lead.name}
       Endereço: ${lead.address}
-      Avaliação: ${lead.rating} (${lead.userRatingCount} avaliações)
+      Avaliação: ${lead.rating ?? "N/A"} (${lead.userRatingCount} avaliações)
       Website: ${lead.websiteUri ? "Sim" : "Não"}
       Telefone: ${lead.nationalPhoneNumber ? "Sim" : "Não"}
-      Tipos: ${lead.types?.join(", ")}
+      Tipos: ${lead.types.join(", ") || "Não informado"}
 
       Avaliações recentes:
       ${
-        lead.reviews
-          ?.map((r: any) => `- ${r.rating} estrelas: "${r.text?.text}"`)
-          .join("\n") || "Nenhuma avaliação detalhada disponível."
+        lead.reviews.length > 0
+          ? lead.reviews.map((r) => `- ${r.rating ?? "?"} estrelas: "${r.text?.text ?? "Sem texto"}"`).join("\n")
+          : "Nenhuma avaliação detalhada disponível."
       }
 
       Gere um relatório de oportunidade de vendas completo em formato Markdown (pt-BR).

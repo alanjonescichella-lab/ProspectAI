@@ -1,9 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
+import { z } from "zod";
+
+const searchSchema = z.object({
+  icp: z.string().min(1).max(500),
+  service: z.string().min(1).max(500),
+  state: z.string().min(1).max(50),
+  city: z.string().max(100).default(""),
+});
+
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60_000;
+
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitMap.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitMap.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT) return false;
+  entry.count++;
+  return true;
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { icp, service, state, city } = await req.json();
+    const ip = req.headers.get("x-forwarded-for") || "unknown";
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { error: "Muitas requisições. Tente novamente em 1 minuto." },
+        { status: 429 }
+      );
+    }
+
+    const body = await req.json();
+    const parsed = searchSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Dados inválidos: " + parsed.error.issues.map(i => i.message).join(", ") },
+        { status: 400 }
+      );
+    }
+
+    const { icp, service, state, city } = parsed.data;
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
