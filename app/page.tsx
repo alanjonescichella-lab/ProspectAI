@@ -5,7 +5,9 @@ import { SearchForm } from "@/components/SearchForm";
 import { ResultsList } from "@/components/ResultsList";
 import { LeadDetail } from "@/components/LeadDetail";
 import { Lead, SearchParams } from "@/types";
-import { Sparkles } from "lucide-react";
+import { Sparkles, LogOut } from "lucide-react";
+import { createSupabaseBrowser } from "@/lib/supabase-browser";
+import { useRouter } from "next/navigation";
 
 export default function Home() {
   const [step, setStep] = useState<"search" | "results" | "detail">("search");
@@ -15,6 +17,14 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mainRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    const supabase = createSupabaseBrowser();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  };
 
   useEffect(() => {
     mainRef.current?.focus();
@@ -89,8 +99,18 @@ export default function Home() {
             </div>
             <span className="font-bold text-xl tracking-tight">ProspectAI</span>
           </button>
-          <div className="text-sm text-slate-400 hidden sm:block">
-            Prospecção Inteligente B2B
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-slate-400 hidden sm:block">
+              Prospecção Inteligente B2B
+            </span>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors bg-transparent border-none cursor-pointer"
+              aria-label="Sair da conta"
+            >
+              <LogOut className="w-4 h-4" aria-hidden="true" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
           </div>
         </div>
       </header>
